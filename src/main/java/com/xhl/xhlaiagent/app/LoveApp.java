@@ -14,6 +14,8 @@ import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.PromptTemplate;
+import org.springframework.ai.tool.ToolCallback;
+import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -53,8 +55,7 @@ public class LoveApp {
             
             请根据以上信息开启咨询对话 💬
             """);
-    @Autowired
-    private VectorStore loveAppVectorStore;
+
 
     // 构造器注入
     public LoveApp(ChatModel dashscopeChatModel) {
@@ -114,8 +115,8 @@ public class LoveApp {
     }
 
     @Resource
-//    private VectorStore loveAppVectorStore;
-    private VectorStore pgVectorVectorStore;
+    private VectorStore loveAppVectorStore;
+//    private VectorStore pgVectorVectorStore;
 
     public String doChatWithRag(String message, String chatId) {
         ChatResponse chatResponse = chatClient
@@ -126,7 +127,7 @@ public class LoveApp {
                 // 开启日志，便于观察效果
                 .advisors(new MyLoggerAdvisor())
                 // 应用知识库问答
-                .advisors(new QuestionAnswerAdvisor(pgVectorVectorStore))
+                .advisors(new QuestionAnswerAdvisor(loveAppVectorStore))
 //                .advisors(LoveAppRagCustomAdvisorFactory.createLoveAppRagCustomAdvisor(loveAppVectorStore,"单身"))
                 .call()
                 .chatResponse();
@@ -170,6 +171,45 @@ public class LoveApp {
         return content;
     }
 
+
+    @Resource
+    private ToolCallback[] allTools;
+
+    // 支持调用工具
+    public String doChatWithTools(String message, String chatId) {
+        ChatResponse response = chatClient
+                .prompt()
+                .user(message)
+                // 开启日志，便于观察效果
+                .advisors(new MyLoggerAdvisor())
+                .advisors(spec -> spec.param(CHAT_MEMORY_CONVERSATION_ID_KEY, chatId)
+                        .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, 10))
+                .tools(allTools)
+                .call()
+                .chatResponse();
+        String content = response.getResult().getOutput().getText();
+        log.info("content: {}", content);
+        return content;
+    }
+
+    @Resource
+    private ToolCallbackProvider toolCallbackProvider;
+    // 支持MCP
+    public String doChatWithMcp(String message, String chatId) {
+        ChatResponse response = chatClient
+                .prompt()
+                .user(message)
+                .advisors(spec -> spec.param(CHAT_MEMORY_CONVERSATION_ID_KEY, chatId)
+                        .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, 10))
+                // 开启日志，便于观察效果
+                .advisors(new MyLoggerAdvisor())
+                .tools(toolCallbackProvider)
+                .call()
+                .chatResponse();
+        String content = response.getResult().getOutput().getText();
+        log.info("content: {}", content);
+        return content;
+    }
 
 }
 

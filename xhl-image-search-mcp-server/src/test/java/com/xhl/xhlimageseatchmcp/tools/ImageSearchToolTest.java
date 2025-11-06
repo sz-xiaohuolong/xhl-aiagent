@@ -1,0 +1,25 @@
+package com.xhl.xhlimageseatchmcp.tools;
+
+import jakarta.annotation.Resource;
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+@SpringBootTest
+class ImageSearchToolTest {
+
+    @Resource
+    private ImageSearchTool imageSearchTool;
+
+    @Test
+    void searchImage() {
+        String cat = imageSearchTool.searchImage("cat");
+        System.out.println(cat);
+        assertNotNull(cat);
+    }
+
+    @Test
+    void searchMediumImages() {
+    }
+}
