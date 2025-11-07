@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class ToolCallAgent extends ReActAgent{
+public class ToolCallAgent extends ReActAgent {
 
     // 可用的工具
     private final ToolCallback[] availableTools;
@@ -51,11 +51,13 @@ public class ToolCallAgent extends ReActAgent{
 
     @Override
     public boolean think() {
+
         //1. 校验提示词，拼接用户提示词
-        if(StringUtil.isEmpty(getNextStepPrompt())){
+        if (getNextStepPrompt() != null && !getNextStepPrompt().isEmpty()) {
             UserMessage userMessage = new UserMessage(getNextStepPrompt());
             getMessageList().add(userMessage);
         }
+
         //2. 调用AI大模型，获取工具调用结果
         List<Message> messageList = getMessageList();
         Prompt prompt = new Prompt(messageList, chatOptions);
@@ -113,14 +115,23 @@ public class ToolCallAgent extends ReActAgent{
         // 判断是否调用了终止工具
         boolean doTerminate = toolResponseMessage.getResponses().stream()
                 .anyMatch(response -> response.name().equals("doTerminate"));
-        if(doTerminate){
+        if (doTerminate) {
             log.info("终止工具调用");
             setState(AgentState.FINISHED);
         }
         String results = toolResponseMessage.getResponses().stream()
-                .map(response -> "工具 " + response.name() + " 完成了它的任务！结果: " + response.responseData())
+                .map(response -> {
+                    String result = response.responseData();
+                    // 防止过长内容引发 InvalidParameter
+                    if (result != null && result.length() > 2000) {
+                        result = result.substring(0, 2000) + "...(内容过长已截断)";
+                    }
+                    return "工具 " + response.name() + " 完成了它的任务！结果: " + result;
+                })
                 .collect(Collectors.joining("\n"));
+
         log.info(results);
+
         return results;
     }
 }

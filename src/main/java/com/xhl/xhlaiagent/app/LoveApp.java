@@ -2,7 +2,6 @@ package com.xhl.xhlaiagent.app;
 
 import com.xhl.xhlaiagent.advisor.MyLoggerAdvisor;
 import com.xhl.xhlaiagent.chatmemory.FileBasedChatMemory;
-import com.xhl.xhlaiagent.rag.LoveAppRagCustomAdvisorFactory;
 import com.xhl.xhlaiagent.rag.QueryRewriter;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -17,8 +16,8 @@ import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.ai.vectorstore.VectorStore;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Flux;
 
 import java.util.List;
 
@@ -74,9 +73,8 @@ public class LoveApp {
                 .build();
     }
 
-
+    // 最简单的方法
     public String doChat(String message, String chatId) {
-
         ChatResponse response = chatClient
                 .prompt()
                 .user(message)
@@ -87,6 +85,20 @@ public class LoveApp {
         String content = response.getResult().getOutput().getText();
         log.info("content: {}", content);
         return content;
+    }
+
+    // 支持SSE流式传输
+    public Flux<String> doChatByStream(String message, String chatId) {
+        // 响应式编程起到一个异步通知效果
+        Flux<String> chatResponseFlux = chatClient
+                .prompt()
+                .user(message)
+                .advisors(spec -> spec.param(CHAT_MEMORY_CONVERSATION_ID_KEY, chatId)
+                        .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, 10))
+                .stream()
+                .content();
+        log.info("content: {}", chatResponseFlux);
+        return chatResponseFlux;
     }
 
 
